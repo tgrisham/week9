@@ -17,6 +17,11 @@ after { puts; }                                                                 
 
 events_table = DB.from(:events)
 rsvps_table = DB.from(:rsvps)
+users_table = DB.from(:users)
+
+before do
+    @current_user = users_table.where(id:session["user_id"]).to_a[0]    
+end
 
 get "/" do
     puts "params: #{params}"
@@ -33,6 +38,7 @@ get "/events/:id" do
     pp @event
     @rsvps = rsvps_table.where(event_id: @event[:id]).to_a
     @going_count = rsvps_table.where(event_id: @event[:id], going: true).count
+    @users_table = users_table
     view "event"
 end
 
@@ -50,8 +56,7 @@ get "/events/:id/rsvps/create" do
     # next we want to insert a row in the rsvp database
     rsvps_table.insert(
         event_id: @event[:id],
-        name: params["name"],
-        email: params["email"],
+        user_id: cookies["user_id"],
         comments: params["comments"],
         going: params["going"]
     )
@@ -62,8 +67,14 @@ get "/users/new" do
     view "new_user"
 end
 
-get "/users/create" do
+post "/users/create" do
     puts "params: #{params}"
+    
+    users_table.insert(
+        name: params["name"],
+        email: params["email"],
+        password: BCrypt::Password.create(params["password"])
+    )
 
     view "create_user"
 end
@@ -72,12 +83,26 @@ get "/logins/new" do
     view "new_login"
 end
 
-get "/logins/create" do
+post "/logins/create" do
     puts "params: #{params}"
  
-    view "create_login"
+    #First is there a user with the params["email"]
+    @user = users_table.where(email: params["email"]).to_a[0]
+       
+    if @user
+          #Second, if there is, does the password match?
+        if BCrypt::Password.new(@user[:password])
+            session["user_id"] = @user[:id]
+            view "create_login"
+        else
+            view "create_login_failed"
+        end
+    else
+        view "create_login_failed"
+    end
 end
 
 get "/logout" do
+    session["user_id"] = nil
     view "logout"
 end
