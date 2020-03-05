@@ -55,3 +55,5 @@ events_table.insert(title: "Kaleapolooza",
                     description: "If you're into nutrition and vitamins and stuff, this is the event for you.",
                     date: "July 4",
                     location: "Nowhere")
+
+puts "Success"
